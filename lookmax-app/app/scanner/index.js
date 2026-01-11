@@ -238,37 +238,37 @@ export default function ScannerScreen() {
                 ref={cameraRef}
                 style={styles.camera}
                 facing={facing}
-            >
-                {/* Guide overlay */}
-                <View style={styles.guideOverlay}>
-                    <View style={styles.faceGuide} />
-                </View>
+            />
 
-                {/* Instructions */}
-                <View style={styles.instructions}>
-                    <Text style={styles.instructionText}>
-                        Position your face within the guide
-                    </Text>
-                </View>
+            {/* Guide overlay - outside CameraView with absolute position */}
+            <View style={styles.guideOverlay}>
+                <View style={styles.faceGuide} />
+            </View>
 
-                {/* Controls */}
-                <View style={styles.controls}>
-                    <TouchableOpacity style={styles.controlButton} onPress={pickImage}>
-                        <Ionicons name="images" size={28} color="#fff" />
-                    </TouchableOpacity>
+            {/* Instructions - outside CameraView with absolute position */}
+            <View style={styles.instructions}>
+                <Text style={styles.instructionText}>
+                    Position your face within the guide
+                </Text>
+            </View>
 
-                    <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
-                        <View style={styles.captureButtonInner} />
-                    </TouchableOpacity>
+            {/* Controls - outside CameraView with absolute position */}
+            <View style={styles.controls}>
+                <TouchableOpacity style={styles.controlButton} onPress={pickImage}>
+                    <Ionicons name="images" size={28} color="#fff" />
+                </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={styles.controlButton}
-                        onPress={() => setFacing(facing === 'front' ? 'back' : 'front')}
-                    >
-                        <Ionicons name="camera-reverse" size={28} color="#fff" />
-                    </TouchableOpacity>
-                </View>
-            </CameraView>
+                <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
+                    <View style={styles.captureButtonInner} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.controlButton}
+                    onPress={() => setFacing(facing === 'front' ? 'back' : 'front')}
+                >
+                    <Ionicons name="camera-reverse" size={28} color="#fff" />
+                </TouchableOpacity>
+            </View>
         </View>
     );
 }

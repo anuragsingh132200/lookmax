@@ -1,10 +1,10 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from datetime import datetime
 from bson import ObjectId
 
 from ..database import get_users_collection
 from ..models import UserCreate, UserLogin, UserResponse, Token
-from ..utils import hash_password, verify_password, create_access_token
+from ..utils import hash_password, verify_password, create_access_token, get_current_user
 
 router = APIRouter()
 
@@ -67,21 +67,6 @@ async def login(user_data: UserLogin):
     access_token = create_access_token(data={"sub": str(user["_id"])})
     
     return {"access_token": access_token, "token_type": "bearer"}
-
-
-@router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user: dict = None):
-    """Get current user information."""
-    from ..utils import get_current_user
-    from fastapi import Depends
-    
-    # This is a workaround - the actual dependency injection happens in the route
-    pass
-
-
-# Re-define with proper dependency
-from ..utils import get_current_user
-from fastapi import Depends
 
 
 @router.get("/me")

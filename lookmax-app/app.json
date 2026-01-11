@@ -1,46 +1,48 @@
 {
-    "expo": {
-        "name": "LookMax",
-        "slug": "lookmax",
-        "version": "1.0.0",
-        "orientation": "portrait",
-        "scheme": "lookmax",
-        "userInterfaceStyle": "automatic",
-        "assetBundlePatterns": [
-            "**/*"
-        ],
-        "ios": {
-            "supportsTablet": true,
-            "bundleIdentifier": "com.lookmax.app"
-        },
-        "android": {
-            "package": "com.lookmax.app",
-            "permissions": [
-                "android.permission.CAMERA",
-                "android.permission.RECORD_AUDIO"
-            ]
-        },
-        "web": {
-            "bundler": "metro",
-            "output": "static"
-        },
-        "plugins": [
-            "expo-router",
-            [
-                "expo-camera",
-                {
-                    "cameraPermission": "Allow LookMax to access your camera for face scanning."
-                }
-            ],
-            [
-                "expo-image-picker",
-                {
-                    "photosPermission": "Allow LookMax to access your photos."
-                }
-            ]
-        ],
-        "experiments": {
-            "typedRoutes": true
+  "expo": {
+    "name": "LookMax",
+    "slug": "lookmax",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "lookmax",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lookmax.app"
+    },
+    "android": {
+      "package": "com.lookmax.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow LookMax to access your camera for face scanning."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow LookMax to access your photos."
+        }
+      ],
+      "expo-font",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
     }
+  }
 }

@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function QuickActionButton() {
     const router = useRouter();
@@ -17,14 +18,16 @@ function QuickActionButton() {
 }
 
 export default function TabLayout() {
+    const insets = useSafeAreaInsets();
+
     return (
         <Tabs
             screenOptions={{
                 tabBarStyle: {
                     backgroundColor: '#1a1a2e',
                     borderTopColor: '#2d2d44',
-                    height: 70,
-                    paddingBottom: 10,
+                    height: 70 + insets.bottom,
+                    paddingBottom: insets.bottom + 10,
                     paddingTop: 10,
                 },
                 tabBarActiveTintColor: '#6c5ce7',
@@ -115,3 +118,4 @@ const styles = StyleSheet.create({
         elevation: 8,
     },
 });
+
