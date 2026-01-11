@@ -1,0 +1,192 @@
+.content-page {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.add-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--accent);
+    color: white;
+    border-radius: 12px;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+
+.add-btn:hover {
+    opacity: 0.9;
+}
+
+.content-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.content-card {
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    padding: 24px;
+}
+
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.content-category {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.premium-icon {
+    color: var(--accent);
+}
+
+.free-icon {
+    color: var(--success);
+}
+
+.content-card h3 {
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+
+.content-card p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+.content-meta {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.content-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.edit-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-radius: 8px;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.edit-btn:hover {
+    background: var(--accent);
+}
+
+.delete-btn {
+    padding: 8px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.delete-btn:hover {
+    background: var(--danger);
+    color: white;
+}
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modal-content {
+    background: var(--bg-secondary);
+    border-radius: 20px;
+    padding: 32px;
+    width: 100%;
+    max-width: 480px;
+}
+
+.modal-content h2 {
+    margin-bottom: 24px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.form-group.checkbox label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.form-group.checkbox input {
+    width: auto;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.cancel-btn {
+    flex: 1;
+    padding: 14px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.save-btn {
+    flex: 1;
+    padding: 14px;
+    background: var(--accent);
+    color: white;
+    border-radius: 12px;
+    font-weight: 500;
+}
