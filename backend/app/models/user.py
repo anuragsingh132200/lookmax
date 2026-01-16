@@ -1,12 +1,37 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
-from enum import Enum
+from bson import ObjectId
 
 
-class UserRole(str, Enum):
-    USER = "user"
-    ADMIN = "admin"
+class PyObjectId(str):
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v, info=None):
+        if isinstance(v, ObjectId):
+            return str(v)
+        if isinstance(v, str) and ObjectId.is_valid(v):
+            return v
+        raise ValueError("Invalid ObjectId")
+
+
+class OnboardingData(BaseModel):
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    goals: Optional[List[str]] = []
+    skinType: Optional[str] = None
+    concerns: Optional[List[str]] = []
+    currentRoutine: Optional[str] = None
+
+
+class SubscriptionData(BaseModel):
+    status: str = "free"  # free, active, cancelled
+    stripeCustomerId: Optional[str] = None
+    stripeSubscriptionId: Optional[str] = None
+    expiresAt: Optional[datetime] = None
 
 
 class UserBase(BaseModel):
@@ -23,73 +48,45 @@ class UserLogin(BaseModel):
     password: str
 
 
-class UserUpdate(BaseModel):
-    name: Optional[str] = None
-    bio: Optional[str] = None
-    avatar: Optional[str] = None
-
-
-class OnboardingData(BaseModel):
-    age: Optional[int] = None
-    gender: Optional[str] = None
-    goals: Optional[List[str]] = []
-    skinType: Optional[str] = None
-    hairType: Optional[str] = None
-    fitnessLevel: Optional[str] = None
-    concerns: Optional[List[str]] = []
-
-
-class SubscriptionStatus(str, Enum):
-    NONE = "none"
-    ACTIVE = "active"
-    EXPIRED = "expired"
-    CANCELLED = "cancelled"
-
-
 class UserInDB(UserBase):
-    id: str = Field(alias="_id")
-    role: UserRole = UserRole.USER
-    isVerified: bool = False
-    isPremium: bool = False
-    onboarding: Optional[OnboardingData] = None
-    # Google OAuth fields
-    googleId: Optional[str] = None
-    avatar: Optional[str] = None
-    # User journey state tracking
-    hasSeenFeatureHighlights: bool = False
+    id: Optional[str] = Field(None, alias="_id")
+    password: str
+    onboarding: Optional[OnboardingData] = OnboardingData()
+    subscription: Optional[SubscriptionData] = SubscriptionData()
+    isOnboarded: bool = False
     hasCompletedFirstScan: bool = False
-    # Subscription fields
-    subscriptionStatus: SubscriptionStatus = SubscriptionStatus.NONE
-    stripeCustomerId: Optional[str] = None
-    subscriptionId: Optional[str] = None
-    subscriptionEndDate: Optional[datetime] = None
-    createdAt: datetime
-    updatedAt: datetime
+    createdAt: datetime = Field(default_factory=datetime.utcnow)
+    updatedAt: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        json_encoders = {ObjectId: str}
+
+
+class UserResponse(BaseModel):
+    id: str
+    email: EmailStr
+    name: str
+    onboarding: Optional[OnboardingData] = None
+    subscription: Optional[SubscriptionData] = None
+    isOnboarded: bool = False
+    hasCompletedFirstScan: bool = False
+    createdAt: Optional[datetime] = None
 
     class Config:
         populate_by_name = True
 
 
-class UserResponse(BaseModel):
-    id: str
-    email: str
-    name: str
-    role: str
-    isVerified: bool
-    isPremium: bool
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
     onboarding: Optional[OnboardingData] = None
-    googleId: Optional[str] = None
-    avatar: Optional[str] = None
-    hasSeenFeatureHighlights: bool = False
-    hasCompletedFirstScan: bool = False
-    subscriptionStatus: str = "none"
-    subscriptionEndDate: Optional[datetime] = None
-    createdAt: datetime
+    isOnboarded: Optional[bool] = None
+    hasCompletedFirstScan: Optional[bool] = None
 
 
 class Token(BaseModel):
     access_token: str
-    token_type: str = "bearer"
+    token_type: str
 
 
 class TokenData(BaseModel):

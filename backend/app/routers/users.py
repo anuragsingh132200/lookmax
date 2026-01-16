@@ -1,28 +1,84 @@
-from fastapi import APIRouter, HTTPException, status, Depends
-from datetime import datetime
-from bson import ObjectId
+from fastapi import APIRouter, HTTPException, Depends, status
 from typing import List
+from ..models.user import UserResponse, UserUpdate, OnboardingData
+from ..database import get_database
+from ..utils.auth import get_current_active_user, get_admin_user
+from bson import ObjectId
+from datetime import datetime
 
-from ..database import get_users_collection, get_progress_collection
-from ..models import UserUpdate, OnboardingData, ProgressCreate
-from ..utils import get_current_user
-
-router = APIRouter()
+router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.put("/onboarding")
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_profile(current_user: dict = Depends(get_current_active_user)):
+    """Get current user's profile."""
+    return UserResponse(
+        id=current_user["_id"],
+        email=current_user["email"],
+        name=current_user["name"],
+        onboarding=current_user.get("onboarding"),
+        subscription=current_user.get("subscription"),
+        isOnboarded=current_user.get("isOnboarded", False),
+        hasCompletedFirstScan=current_user.get("hasCompletedFirstScan", False),
+        createdAt=current_user.get("createdAt")
+    )
+
+
+@router.put("/me", response_model=UserResponse)
+async def update_current_user(
+    user_update: UserUpdate,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Update current user's profile."""
+    db = get_database()
+    
+    update_data = {}
+    if user_update.name is not None:
+        update_data["name"] = user_update.name
+    if user_update.onboarding is not None:
+        update_data["onboarding"] = user_update.onboarding.dict()
+    if user_update.isOnboarded is not None:
+        update_data["isOnboarded"] = user_update.isOnboarded
+    if user_update.hasCompletedFirstScan is not None:
+        update_data["hasCompletedFirstScan"] = user_update.hasCompletedFirstScan
+    
+    if update_data:
+        update_data["updatedAt"] = datetime.utcnow()
+        await db.users.update_one(
+            {"_id": ObjectId(current_user["_id"])},
+            {"$set": update_data}
+        )
+    
+    # Get updated user
+    updated_user = await db.users.find_one({"_id": ObjectId(current_user["_id"])})
+    updated_user["_id"] = str(updated_user["_id"])
+    
+    return UserResponse(
+        id=updated_user["_id"],
+        email=updated_user["email"],
+        name=updated_user["name"],
+        onboarding=updated_user.get("onboarding"),
+        subscription=updated_user.get("subscription"),
+        isOnboarded=updated_user.get("isOnboarded", False),
+        hasCompletedFirstScan=updated_user.get("hasCompletedFirstScan", False),
+        createdAt=updated_user.get("createdAt")
+    )
+
+
+@router.post("/onboarding")
 async def save_onboarding(
     onboarding_data: OnboardingData,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_active_user)
 ):
-    """Save user onboarding data."""
-    users = get_users_collection()
+    """Save user's onboarding data."""
+    db = get_database()
     
-    await users.update_one(
+    await db.users.update_one(
         {"_id": ObjectId(current_user["_id"])},
         {
             "$set": {
-                "onboarding": onboarding_data.model_dump(),
+                "onboarding": onboarding_data.dict(),
+                "isOnboarded": True,
                 "updatedAt": datetime.utcnow()
             }
         }
@@ -31,154 +87,79 @@ async def save_onboarding(
     return {"message": "Onboarding data saved successfully"}
 
 
-@router.get("/profile")
-async def get_profile(current_user: dict = Depends(get_current_user)):
-    """Get user profile."""
-    return {
-        "id": current_user["_id"],
-        "email": current_user["email"],
-        "name": current_user["name"],
-        "bio": current_user.get("bio", ""),
-        "avatar": current_user.get("avatar"),
-        "role": current_user.get("role", "user"),
-        "isVerified": current_user.get("isVerified", False),
-        "isPremium": current_user.get("isPremium", False),
-        "onboarding": current_user.get("onboarding"),
-        "createdAt": current_user.get("createdAt")
-    }
-
-
-@router.put("/profile")
-async def update_profile(
-    profile_data: UserUpdate,
-    current_user: dict = Depends(get_current_user)
+# Admin endpoints
+@router.get("/", response_model=List[UserResponse])
+async def list_users(
+    skip: int = 0,
+    limit: int = 50,
+    admin_user: dict = Depends(get_admin_user)
 ):
-    """Update user profile."""
-    users = get_users_collection()
+    """List all users (admin only)."""
+    db = get_database()
     
-    update_data = {k: v for k, v in profile_data.model_dump().items() if v is not None}
-    update_data["updatedAt"] = datetime.utcnow()
+    users = await db.users.find().skip(skip).limit(limit).to_list(limit)
     
-    await users.update_one(
-        {"_id": ObjectId(current_user["_id"])},
-        {"$set": update_data}
-    )
-    
-    return {"message": "Profile updated successfully"}
-
-
-@router.post("/progress")
-async def add_progress_photo(
-    progress_data: ProgressCreate,
-    current_user: dict = Depends(get_current_user)
-):
-    """Add a progress photo."""
-    progress = get_progress_collection()
-    
-    new_progress = {
-        "userId": current_user["_id"],
-        "imageBase64": progress_data.imageBase64,
-        "notes": progress_data.notes,
-        "createdAt": datetime.utcnow()
-    }
-    
-    result = await progress.insert_one(new_progress)
-    
-    return {
-        "id": str(result.inserted_id),
-        "message": "Progress photo saved successfully"
-    }
-
-
-@router.get("/progress")
-async def get_progress_photos(current_user: dict = Depends(get_current_user)):
-    """Get user's progress photos."""
-    progress = get_progress_collection()
-    
-    cursor = progress.find(
-        {"userId": current_user["_id"]}
-    ).sort("createdAt", -1).limit(50)
-    
-    photos = []
-    async for photo in cursor:
-        photos.append({
-            "id": str(photo["_id"]),
-            "notes": photo.get("notes"),
-            "createdAt": photo["createdAt"]
-        })
-    
-    return photos
-
-
-@router.get("/stats")
-async def get_user_stats(current_user: dict = Depends(get_current_user)):
-    """Get user statistics for the profile page."""
-    from ..database import get_scans_collection, get_posts_collection
-    
-    scans = get_scans_collection()
-    progress = get_progress_collection()
-    posts = get_posts_collection()
-    
-    # Count user's data
-    scan_count = await scans.count_documents({"userId": current_user["_id"]})
-    progress_count = await progress.count_documents({"userId": current_user["_id"]})
-    post_count = await posts.count_documents({"userId": current_user["_id"]})
-    
-    # Get latest scan score
-    latest_scan = await scans.find_one(
-        {"userId": current_user["_id"]},
-        sort=[("createdAt", -1)]
-    )
-    
-    latest_score = None
-    if latest_scan and latest_scan.get("analysis"):
-        latest_score = latest_scan["analysis"].get("overallScore")
-    
-    return {
-        "scanCount": scan_count,
-        "progressCount": progress_count,
-        "postCount": post_count,
-        "latestScore": latest_score,
-        "memberSince": current_user.get("createdAt")
-    }
-
-
-@router.get("/leaderboard")
-async def get_leaderboard():
-    """Get the leaderboard of top users."""
-    from ..database import get_scans_collection
-    
-    scans = get_scans_collection()
-    users_coll = get_users_collection()
-    
-    # Aggregate to find users with highest scores
-    pipeline = [
-        {"$sort": {"createdAt": -1}},
-        {"$group": {
-            "_id": "$userId",
-            "latestScore": {"$first": "$analysis.overallScore"},
-            "scanCount": {"$sum": 1}
-        }},
-        {"$match": {"latestScore": {"$ne": None}}},
-        {"$sort": {"latestScore": -1}},
-        {"$limit": 50}
+    return [
+        UserResponse(
+            id=str(user["_id"]),
+            email=user["email"],
+            name=user["name"],
+            onboarding=user.get("onboarding"),
+            subscription=user.get("subscription"),
+            isOnboarded=user.get("isOnboarded", False),
+            hasCompletedFirstScan=user.get("hasCompletedFirstScan", False),
+            createdAt=user.get("createdAt")
+        )
+        for user in users
     ]
+
+
+@router.get("/{user_id}", response_model=UserResponse)
+async def get_user(
+    user_id: str,
+    admin_user: dict = Depends(get_admin_user)
+):
+    """Get a specific user (admin only)."""
+    db = get_database()
     
-    cursor = scans.aggregate(pipeline)
+    try:
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+    except:
+        raise HTTPException(status_code=404, detail="User not found")
     
-    leaderboard = []
-    rank = 1
-    async for entry in cursor:
-        user = await users_coll.find_one({"_id": ObjectId(entry["_id"])})
-        if user:
-            leaderboard.append({
-                "rank": rank,
-                "userId": entry["_id"],
-                "userName": user.get("name", "Anonymous"),
-                "avatar": user.get("avatar"),
-                "score": entry["latestScore"],
-                "scanCount": entry["scanCount"]
-            })
-            rank += 1
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     
-    return leaderboard
+    return UserResponse(
+        id=str(user["_id"]),
+        email=user["email"],
+        name=user["name"],
+        onboarding=user.get("onboarding"),
+        subscription=user.get("subscription"),
+        isOnboarded=user.get("isOnboarded", False),
+        hasCompletedFirstScan=user.get("hasCompletedFirstScan", False),
+        createdAt=user.get("createdAt")
+    )
+
+
+@router.delete("/{user_id}")
+async def delete_user(
+    user_id: str,
+    admin_user: dict = Depends(get_admin_user)
+):
+    """Delete a user (admin only)."""
+    db = get_database()
+    
+    try:
+        result = await db.users.delete_one({"_id": ObjectId(user_id)})
+    except:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Also delete user's data
+    await db.scans.delete_many({"userId": user_id})
+    await db.progress.delete_many({"userId": user_id})
+    
+    return {"message": "User deleted successfully"}

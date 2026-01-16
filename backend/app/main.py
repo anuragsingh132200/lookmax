@@ -2,14 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from .config import settings
 from .database import connect_to_mongo, close_mongo_connection
-from .routers import auth, users, scanner, content, community, admin, events, payment, progress
+from .routers import auth, users, courses, scan, payment, progress
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan events."""
     # Startup
     await connect_to_mongo()
     yield
@@ -19,30 +17,27 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="LookMax API",
-    description="Backend API for LookMax - Your Personal Glow-Up Guide",
+    description="Backend API for the LookMax lookmaxxing app",
     version="1.0.0",
     lifespan=lifespan
 )
 
-# Configure CORS
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=["*"],  # In production, specify actual origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Include routers
-app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(users.router, prefix="/api/users", tags=["Users"])
-app.include_router(scanner.router, prefix="/api/scanner", tags=["Face Scanner"])
-app.include_router(content.router, prefix="/api/content", tags=["Content"])
-app.include_router(community.router, prefix="/api/community", tags=["Community"])
-app.include_router(events.router, prefix="/api/events", tags=["Events"])
-app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
-app.include_router(payment.router, prefix="/api/payment", tags=["Payment"])
-app.include_router(progress.router, prefix="/api/progress", tags=["Progress"])
+app.include_router(auth.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
+app.include_router(courses.router, prefix="/api")
+app.include_router(scan.router, prefix="/api")
+app.include_router(payment.router, prefix="/api")
+app.include_router(progress.router, prefix="/api")
 
 
 @app.get("/")

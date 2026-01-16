@@ -1,146 +1,167 @@
-from fastapi import APIRouter, HTTPException, status, Depends
-from datetime import datetime
+from fastapi import APIRouter, HTTPException, Depends, status
+from typing import List
+from ..models.progress import ProgressCreate, ProgressResponse, ProgressUpdate
+from ..database import get_database
+from ..utils.auth import get_current_active_user
 from bson import ObjectId
-from pydantic import BaseModel
-from typing import Optional, List
+from datetime import datetime
 
-from ..database import db
-from ..utils import get_current_user
-
-router = APIRouter()
+router = APIRouter(prefix="/progress", tags=["Progress"])
 
 
-class ChapterComplete(BaseModel):
-    moduleId: str
-    chapterId: str
+@router.get("/", response_model=List[ProgressResponse])
+async def list_user_progress(
+    current_user: dict = Depends(get_current_active_user)
+):
+    """List all course progress for the current user."""
+    db = get_database()
+    user_id = current_user["_id"]
+    
+    progress_list = await db.progress.find({"userId": user_id}).to_list(100)
+    
+    return [
+        ProgressResponse(
+            id=str(p["_id"]),
+            userId=p["userId"],
+            courseId=p["courseId"],
+            currentModuleId=p.get("currentModuleId"),
+            currentChapterId=p.get("currentChapterId"),
+            completedChapters=p.get("completedChapters", []),
+            percentComplete=p.get("percentComplete", 0.0),
+            lastAccessedAt=p.get("lastAccessedAt")
+        )
+        for p in progress_list
+    ]
 
 
-class ProgressResponse(BaseModel):
-    moduleId: str
-    chapterId: str
-    completedAt: datetime
+@router.get("/{course_id}", response_model=ProgressResponse)
+async def get_course_progress(
+    course_id: str,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Get progress for a specific course."""
+    db = get_database()
+    user_id = current_user["_id"]
+    
+    progress = await db.progress.find_one({
+        "userId": user_id,
+        "courseId": course_id
+    })
+    
+    if not progress:
+        # Create new progress entry
+        progress = {
+            "userId": user_id,
+            "courseId": course_id,
+            "currentModuleId": None,
+            "currentChapterId": None,
+            "completedChapters": [],
+            "percentComplete": 0.0,
+            "lastAccessedAt": datetime.utcnow(),
+            "createdAt": datetime.utcnow(),
+            "updatedAt": datetime.utcnow()
+        }
+        result = await db.progress.insert_one(progress)
+        progress["_id"] = result.inserted_id
+    
+    return ProgressResponse(
+        id=str(progress["_id"]),
+        userId=progress["userId"],
+        courseId=progress["courseId"],
+        currentModuleId=progress.get("currentModuleId"),
+        currentChapterId=progress.get("currentChapterId"),
+        completedChapters=progress.get("completedChapters", []),
+        percentComplete=progress.get("percentComplete", 0.0),
+        lastAccessedAt=progress.get("lastAccessedAt")
+    )
 
 
-def get_progress_collection():
-    return db.get_collection("progress")
+@router.put("/{course_id}", response_model=ProgressResponse)
+async def update_progress(
+    course_id: str,
+    progress_update: ProgressUpdate,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Update progress for a course."""
+    db = get_database()
+    user_id = current_user["_id"]
+    
+    # Get the course to calculate percentage
+    course = await db.courses.find_one({"_id": ObjectId(course_id)})
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    total_chapters = course.get("totalChapters", 0)
+    
+    # Get or create progress
+    progress = await db.progress.find_one({
+        "userId": user_id,
+        "courseId": course_id
+    })
+    
+    if not progress:
+        progress = {
+            "userId": user_id,
+            "courseId": course_id,
+            "currentModuleId": None,
+            "currentChapterId": None,
+            "completedChapters": [],
+            "percentComplete": 0.0,
+            "lastAccessedAt": datetime.utcnow(),
+            "createdAt": datetime.utcnow(),
+            "updatedAt": datetime.utcnow()
+        }
+        result = await db.progress.insert_one(progress)
+        progress["_id"] = result.inserted_id
+    
+    # Update fields
+    update_data = {
+        "lastAccessedAt": datetime.utcnow(),
+        "updatedAt": datetime.utcnow()
+    }
+    
+    if progress_update.currentModuleId is not None:
+        update_data["currentModuleId"] = progress_update.currentModuleId
+    if progress_update.currentChapterId is not None:
+        update_data["currentChapterId"] = progress_update.currentChapterId
+    
+    # Handle completed chapter
+    completed_chapters = progress.get("completedChapters", [])
+    if progress_update.completedChapterId:
+        if progress_update.completedChapterId not in completed_chapters:
+            completed_chapters.append(progress_update.completedChapterId)
+            update_data["completedChapters"] = completed_chapters
+    
+    # Calculate percentage
+    if total_chapters > 0:
+        update_data["percentComplete"] = (len(completed_chapters) / total_chapters) * 100
+    
+    await db.progress.update_one(
+        {"_id": progress["_id"]},
+        {"$set": update_data}
+    )
+    
+    # Get updated progress
+    progress = await db.progress.find_one({"_id": progress["_id"]})
+    
+    return ProgressResponse(
+        id=str(progress["_id"]),
+        userId=progress["userId"],
+        courseId=progress["courseId"],
+        currentModuleId=progress.get("currentModuleId"),
+        currentChapterId=progress.get("currentChapterId"),
+        completedChapters=progress.get("completedChapters", []),
+        percentComplete=progress.get("percentComplete", 0.0),
+        lastAccessedAt=progress.get("lastAccessedAt")
+    )
 
 
-@router.post("/complete-chapter")
-async def complete_chapter(
-    data: ChapterComplete,
-    current_user: dict = Depends(get_current_user)
+@router.post("/{course_id}/complete-chapter/{chapter_id}")
+async def mark_chapter_complete(
+    course_id: str,
+    chapter_id: str,
+    current_user: dict = Depends(get_current_active_user)
 ):
     """Mark a chapter as complete."""
-    progress = get_progress_collection()
-    user_id = current_user["_id"]
-    
-    # Check if already completed
-    existing = await progress.find_one({
-        "userId": str(user_id),
-        "moduleId": data.moduleId,
-        "chapterId": data.chapterId
-    })
-    
-    if existing:
-        return {"message": "Chapter already completed", "completedAt": existing["completedAt"]}
-    
-    # Create progress record
-    new_progress = {
-        "userId": str(user_id),
-        "moduleId": data.moduleId,
-        "chapterId": data.chapterId,
-        "completedAt": datetime.utcnow()
-    }
-    
-    await progress.insert_one(new_progress)
-    
-    return {"message": "Chapter marked as complete", "completedAt": new_progress["completedAt"]}
-
-
-@router.get("/user")
-async def get_user_progress(current_user: dict = Depends(get_current_user)):
-    """Get all progress for the current user."""
-    progress = get_progress_collection()
-    user_id = current_user["_id"]
-    
-    cursor = progress.find({"userId": str(user_id)})
-    completed_chapters = []
-    
-    async for doc in cursor:
-        completed_chapters.append({
-            "moduleId": doc["moduleId"],
-            "chapterId": doc["chapterId"],
-            "completedAt": doc["completedAt"]
-        })
-    
-    # Get total modules/chapters from content
-    content = db.get_collection("content")
-    total_chapters = 0
-    module_progress = {}
-    
-    async for course in content.find({}):
-        course_id = str(course["_id"])
-        modules = course.get("modules", [])
-        for module in modules:
-            module_id = module.get("id", "")
-            chapters = module.get("chapters", [])
-            total_chapters += len(chapters) if chapters else 1
-            
-            # Calculate module progress
-            completed_in_module = len([c for c in completed_chapters if c["moduleId"] == module_id])
-            total_in_module = len(chapters) if chapters else 1
-            module_progress[module_id] = {
-                "completed": completed_in_module,
-                "total": total_in_module,
-                "percentage": round((completed_in_module / total_in_module) * 100) if total_in_module > 0 else 0
-            }
-    
-    overall_completed = len(completed_chapters)
-    overall_percentage = round((overall_completed / total_chapters) * 100) if total_chapters > 0 else 0
-    
-    return {
-        "completedChapters": completed_chapters,
-        "totalCompleted": overall_completed,
-        "totalChapters": total_chapters,
-        "overallPercentage": overall_percentage,
-        "moduleProgress": module_progress
-    }
-
-
-@router.get("/module/{module_id}")
-async def get_module_progress(
-    module_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Get progress for a specific module."""
-    progress = get_progress_collection()
-    user_id = current_user["_id"]
-    
-    cursor = progress.find({
-        "userId": str(user_id),
-        "moduleId": module_id
-    })
-    
-    completed_chapters = []
-    async for doc in cursor:
-        completed_chapters.append({
-            "chapterId": doc["chapterId"],
-            "completedAt": doc["completedAt"]
-        })
-    
-    return {
-        "moduleId": module_id,
-        "completedChapters": completed_chapters,
-        "totalCompleted": len(completed_chapters)
-    }
-
-
-@router.delete("/reset")
-async def reset_progress(current_user: dict = Depends(get_current_user)):
-    """Reset all progress for the current user (for testing)."""
-    progress = get_progress_collection()
-    user_id = current_user["_id"]
-    
-    result = await progress.delete_many({"userId": str(user_id)})
-    
-    return {"message": f"Deleted {result.deleted_count} progress records"}
+    progress_update = ProgressUpdate(completedChapterId=chapter_id)
+    return await update_progress(course_id, progress_update, current_user)

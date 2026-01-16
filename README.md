@@ -1,72 +1,52 @@
-# LookMax - Your Personal Glow-Up Guide 💎
+# LookMax - Lookmaxxing App
 
-A comprehensive self-improvement mobile application featuring AI-powered face scanning, personalized routines, community features, and premium content delivery.
+A comprehensive mobile app for face analysis and self-improvement with AI-powered recommendations, subscription-based premium features, and expert course content.
 
-## 🏗️ Architecture
+## 🏗️ Project Structure
 
 ```
 lookmax/
-├── docker-compose.yml      # Docker orchestration
-├── .env                    # Environment variables
-├── mongo-init.js           # MongoDB initialization
-├── backend/                # FastAPI Python Backend
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   └── app/
-│       ├── main.py
-│       ├── config.py
-│       ├── database.py
-│       ├── routers/        # API endpoints
-│       ├── models/         # Pydantic models
-│       └── utils/          # JWT, password, LLM
-├── lookmax-app/            # React Native Expo App
-│   ├── app/
-│   │   ├── (tabs)/         # Main tab navigation
-│   │   ├── (auth)/         # Login, register, onboarding
-│   │   ├── scanner/        # Face scanner with camera
-│   │   └── paywall/        # Premium subscription
-│   ├── services/           # API clients
-│   └── context/            # Auth state management
-└── admin-panel/            # React Admin Dashboard
-    └── src/
-        ├── pages/          # Dashboard, Users, Content, Events
-        └── components/     # Sidebar, etc.
+├── backend/          # FastAPI Python backend
+├── mobile/           # Expo React Native app (SDK 54)
+└── admin/            # Next.js admin panel
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Docker & Docker Compose
+
 - Node.js 18+
+- Python 3.10+
+- MongoDB (local or Atlas)
 - Expo CLI (`npm install -g expo-cli`)
-- Google AI API Key (for Gemini)
 
-### 1. Clone & Configure
+### 1. Backend Setup
+
 ```bash
-cd lookmax
+cd backend
 
-# Copy and edit environment variables
-cp .env.example .env
-# Edit .env and add your GOOGLE_AI_API_KEY
+# Create virtual environment
+python -m venv venv
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # macOS/Linux
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment
+# Edit .env file with your API keys
+
+# Seed database with admin user & sample data
+python seed.py
+
+# Run server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 2. Start Backend Services
+### 2. Mobile App Setup
+
 ```bash
-# Start MongoDB, Backend, and Admin Panel
-docker-compose up -d
-
-# Check services are running
-docker-compose ps
-```
-
-**Access Points:**
-- **API**: http://localhost:8000 (Swagger docs at /docs)
-- **Mongo Express**: http://localhost:8081 (admin/admin123)
-- **Admin Panel**: http://localhost:5173
-
-### 3. Start Mobile App
-```bash
-cd lookmax-app
+cd mobile
 
 # Install dependencies
 npm install
@@ -75,116 +55,115 @@ npm install
 npx expo start
 ```
 
-Scan the QR code with [Expo Go](https://expo.dev/client) on your phone.
+Scan QR code with Expo Go app or press `a` for Android / `i` for iOS simulator.
 
-## 📱 Features
+### 3. Admin Panel Setup
 
-### Mobile App
-| Feature | Description |
-|---------|-------------|
-| **Face Scanner** | AI-powered facial analysis using Google Gemini |
-| **Home Dashboard** | Stats, quick actions, glow-up plan preview |
-| **Community Forum** | Post, like, and discuss with others |
-| **Chat Rooms** | Topic-based messaging (skincare, fitness, etc.) |
-| **Profile/Stats** | Scan history, baseline metrics, progress tracking |
-| **Paywall** | Premium subscription for full course access |
-
-### Admin Panel
-| Feature | Description |
-|---------|-------------|
-| **Dashboard** | Analytics overview (users, scans, conversion rate) |
-| **Users** | Manage users, toggle premium, delete accounts |
-| **Content** | CRUD for courses and guides by category |
-| **Events** | Create coaching sessions and community events |
-
-## 🔌 API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login
-- `GET /api/auth/me` - Get current user
-
-### Face Scanner
-- `POST /api/scanner/analyze` - Analyze face photo (base64)
-- `GET /api/scanner/history` - Get scan history
-- `GET /api/scanner/compare/{id1}/{id2}` - Compare two scans
-
-### Users
-- `PUT /api/users/onboarding` - Save onboarding data
-- `GET /api/users/profile` - Get profile
-- `GET /api/users/stats` - Get user statistics
-- `GET /api/users/leaderboard` - Get rankings
-
-### Content
-- `GET /api/content/courses` - Get all courses
-- `GET /api/content/glow-up-plan` - Personalized plan
-
-### Community
-- `GET /api/community/posts` - Get forum posts
-- `POST /api/community/posts` - Create post
-- `POST /api/community/posts/{id}/like` - Like/unlike
-- `GET /api/community/chats` - Get chat rooms
-- `POST /api/community/chat/messages` - Send message
-
-### Admin (requires admin role)
-- `GET /api/admin/users` - List all users
-- `PUT /api/admin/users/{id}` - Update user
-- `DELETE /api/admin/users/{id}` - Delete user
-- `POST /api/admin/content` - Create content
-- `POST /api/admin/events` - Create event
-- `GET /api/admin/analytics` - Get analytics
-
-## 🔐 Default Credentials
-
-| Service | Username/Email | Password |
-|---------|---------------|----------|
-| Admin Panel | admin@lookmax.com | admin123 |
-| Mongo Express | admin | admin123 |
-
-## 🛠️ Development
-
-### Backend (with hot reload)
 ```bash
-docker-compose up backend
-```
+cd admin
 
-### Admin Panel (local)
-```bash
-cd admin-panel
+# Install dependencies
 npm install
+
+# Run development server
 npm run dev
 ```
 
-### Mobile App (with Metro bundler)
-```bash
-cd lookmax-app
-npm install
-npx expo start
+Open [http://localhost:3000](http://localhost:3000)
+
+**Default Admin Login:**
+- Email: `admin@lookmax.com`
+- Password: `admin123`
+
+## 🔧 Environment Variables
+
+### Backend (.env)
+
+```env
+MONGODB_URL=mongodb://localhost:27017/lookmax
+JWT_SECRET=your-super-secret-jwt-key
+GEMINI_API_KEY=your-gemini-api-key
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+STRIPE_PRICE_ID=price_xxx
 ```
 
-## 📦 Tech Stack
+### Mobile (Update in services/api.ts)
 
-| Layer | Technology |
-|-------|------------|
-| **Mobile App** | React Native + Expo Router |
-| **Admin Panel** | React + Vite |
-| **Backend** | FastAPI (Python) |
-| **Database** | MongoDB |
-| **AI/LLM** | Google Gemini 1.5 Flash |
-| **Auth** | JWT (python-jose) |
-| **Container** | Docker + Docker Compose |
+Update the `API_URL` to point to your backend server.
 
-## ⚠️ Important Notes
+### Admin (Create .env.local)
 
-1. **GOOGLE_AI_API_KEY**: Required for face scanning. Get one from [Google AI Studio](https://makersuite.google.com/app/apikey)
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000/api
+```
 
-2. **Mobile API URL**: Update `services/api.js` with your machine's IP for device testing:
-   ```javascript
-   const API_BASE_URL = 'http://YOUR_IP:8000';
-   ```
+## 📱 App Features
 
-3. **Production**: Change all secrets in `.env` before deploying!
+### User Flow
 
-## 📄 License
+1. **Login/Signup** - Create account or sign in
+2. **Feature Highlights** - Swipeable intro screens
+3. **Onboarding** - 3-step questionnaire (saved to DB)
+4. **Face Scanner** - Camera-based face capture
+5. **AI Analysis** - Gemini Flash analyzes facial features
+6. **Blurred Results** - Teaser view for non-subscribers
+7. **Payment** - Stripe subscription checkout
+8. **GlowUp Guide** - Video/image course modules
+9. **Progress Tracking** - Track completed chapters
 
-MIT License
+### Admin Features
+
+- Dashboard with user/subscription stats
+- User management (view, delete)
+- Course CRUD operations
+- Module & chapter management
+
+## 🛠️ Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Mobile App | Expo SDK 54, React Native |
+| Backend | FastAPI, Python |
+| Admin Panel | Next.js 14, TypeScript, Tailwind |
+| Database | MongoDB |
+| AI | Google Gemini Flash API |
+| Payments | Stripe |
+| Auth | JWT |
+
+## 📂 Key Files
+
+### Backend
+- `app/main.py` - FastAPI entry point
+- `app/services/gemini.py` - Face analysis AI
+- `app/services/stripe_service.py` - Payment handling
+- `app/routers/` - API endpoints
+
+### Mobile
+- `app/_layout.tsx` - Root navigation
+- `app/(auth)/` - Login/signup screens
+- `app/(onboarding)/` - Onboarding flow
+- `app/(scan)/` - Face scanner & results
+- `app/(main)/` - Home, courses, progress
+
+### Admin
+- `src/app/dashboard/` - Dashboard pages
+- `src/lib/api.ts` - API client
+
+## 🔐 API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/auth/register` | POST | Register new user |
+| `/api/auth/login` | POST | User login |
+| `/api/users/me` | GET | Get current user |
+| `/api/users/onboarding` | POST | Save onboarding data |
+| `/api/scans/analyze` | POST | Analyze face image |
+| `/api/courses` | GET | List courses |
+| `/api/progress/{courseId}` | PUT | Update progress |
+| `/api/payments/create-payment-intent` | POST | Create Stripe payment |
+
+## 📝 License
+
+MIT

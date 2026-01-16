@@ -1,21 +1,24 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from .config import settings
 
-# MongoDB client
 client: AsyncIOMotorClient = None
 db = None
 
 
 async def connect_to_mongo():
-    """Connect to MongoDB database."""
     global client, db
-    client = AsyncIOMotorClient(settings.mongodb_uri)
+    client = AsyncIOMotorClient(settings.mongodb_url)
     db = client.lookmax
+    
+    # Create indexes
+    await db.users.create_index("email", unique=True)
+    await db.scans.create_index("userId")
+    await db.progress.create_index([("userId", 1), ("courseId", 1)], unique=True)
+    
     print("Connected to MongoDB")
 
 
 async def close_mongo_connection():
-    """Close MongoDB connection."""
     global client
     if client:
         client.close()
@@ -23,34 +26,4 @@ async def close_mongo_connection():
 
 
 def get_database():
-    """Get database instance."""
     return db
-
-
-# Collection helpers
-def get_users_collection():
-    return db.users
-
-
-def get_scans_collection():
-    return db.scans
-
-
-def get_content_collection():
-    return db.content
-
-
-def get_progress_collection():
-    return db.progress
-
-
-def get_posts_collection():
-    return db.posts
-
-
-def get_messages_collection():
-    return db.messages
-
-
-def get_events_collection():
-    return db.events

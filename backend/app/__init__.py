@@ -1,1 +1,1 @@
-# LookMax Backend
+# App package

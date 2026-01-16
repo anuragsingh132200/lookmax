@@ -1,36 +1,36 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from datetime import datetime
 
 
-class FacialMeasurement(BaseModel):
+class CategoryAnalysis(BaseModel):
     name: str
-    value: str
-    description: Optional[str] = None
-    rating: Optional[str] = None  # "good", "average", "needs_improvement"
+    score: float
+    observation: str
+    recommendations: List[str] = []
 
 
 class ScanAnalysis(BaseModel):
-    canthalTilt: Optional[str] = None
-    facialSymmetry: Optional[str] = None
-    jawlineDefinition: Optional[str] = None
-    skinQuality: Optional[str] = None
-    overallScore: Optional[int] = None
-    measurements: List[FacialMeasurement] = []
-    recommendations: List[str] = []
-    protocols: List[str] = []
+    overallScore: float
+    summary: str
+    categories: List[CategoryAnalysis] = []
+    topPriorities: List[str] = []
 
 
-class ScanCreate(BaseModel):
-    imageBase64: str
-
-
-class ScanInDB(BaseModel):
-    id: str = Field(alias="_id")
-    userId: str
+class ScanBase(BaseModel):
     imageUrl: Optional[str] = None
-    analysis: ScanAnalysis
-    createdAt: datetime
+
+
+class ScanCreate(ScanBase):
+    imageBase64: Optional[str] = None
+
+
+class ScanInDB(ScanBase):
+    id: Optional[str] = Field(None, alias="_id")
+    userId: str
+    analysis: Optional[ScanAnalysis] = None
+    isBlurred: bool = True  # Blurred until subscribed
+    createdAt: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
         populate_by_name = True
@@ -39,18 +39,10 @@ class ScanInDB(BaseModel):
 class ScanResponse(BaseModel):
     id: str
     userId: str
-    analysis: ScanAnalysis
-    createdAt: datetime
+    imageUrl: Optional[str] = None
+    analysis: Optional[ScanAnalysis] = None
+    isBlurred: bool = True
+    createdAt: Optional[datetime] = None
 
-
-class ProgressPhoto(BaseModel):
-    id: str
-    userId: str
-    imageUrl: str
-    notes: Optional[str] = None
-    createdAt: datetime
-
-
-class ProgressCreate(BaseModel):
-    imageBase64: str
-    notes: Optional[str] = None
+    class Config:
+        populate_by_name = True

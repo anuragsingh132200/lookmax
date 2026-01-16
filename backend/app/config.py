@@ -1,47 +1,36 @@
 from pydantic_settings import BaseSettings
-from typing import List
-import json
+from functools import lru_cache
 
 
 class Settings(BaseSettings):
     # MongoDB
-    mongodb_uri: str = "mongodb://admin:password123@localhost:27017/lookmax?authSource=admin"
+    mongodb_url: str = "mongodb://localhost:27017/lookmax"
     
     # JWT
-    jwt_secret: str = "your-super-secret-jwt-key-change-in-production"
+    jwt_secret: str = "your-super-secret-jwt-key"
     jwt_algorithm: str = "HS256"
-    jwt_expiration_hours: int = 24
+    access_token_expire_minutes: int = 10080  # 7 days
     
-    # Google AI (Gemini)
-    google_ai_api_key: str = ""
-    
-    # Google OAuth
-    GOOGLE_CLIENT_ID: str = ""
-    GOOGLE_CLIENT_SECRET: str = ""
+    # Gemini
+    gemini_api_key: str = ""
     
     # Stripe
-    STRIPE_SECRET_KEY: str = ""
-    STRIPE_WEBHOOK_SECRET: str = ""
-    STRIPE_PRICE_WEEKLY: str = ""
-    STRIPE_PRICE_MONTHLY: str = ""
-    STRIPE_PRICE_YEARLY: str = ""
+    stripe_secret_key: str = ""
+    stripe_publishable_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_id: str = ""
     
-    # App URL for redirects
-    APP_URL: str = "lookmax://"
-    
-    # CORS
-    cors_origins: str = '["http://localhost:19006","http://localhost:8082","http://localhost:5173","http://localhost:3000"]'
-    
-    @property
-    def cors_origins_list(self) -> List[str]:
-        try:
-            return json.loads(self.cors_origins)
-        except json.JSONDecodeError:
-            return ["http://localhost:19006", "http://localhost:5173"]
+    # App
+    frontend_url: str = "http://localhost:8081"
+    admin_url: str = "http://localhost:3000"
     
     class Config:
         env_file = ".env"
-        case_sensitive = False
 
 
-settings = Settings()
+@lru_cache()
+def get_settings():
+    return Settings()
+
+
+settings = get_settings()
