@@ -39,6 +39,14 @@ export function AuthProvider({ children }) {
         return result;
     };
 
+    const loginWithGoogle = async (idToken) => {
+        const result = await authService.loginWithGoogle(idToken);
+        const userData = await authService.getCurrentUser();
+        setUser(userData);
+        setIsAuthenticated(true);
+        return result;
+    };
+
     const register = async (email, password, name) => {
         const result = await authService.register(email, password, name);
         const userData = await authService.getCurrentUser();
@@ -57,14 +65,27 @@ export function AuthProvider({ children }) {
         setUser(userData);
     };
 
+    const refreshUser = async () => {
+        try {
+            const userData = await authService.getCurrentUser();
+            setUser(userData);
+            return userData;
+        } catch (error) {
+            console.log('Failed to refresh user:', error);
+            return null;
+        }
+    };
+
     const value = {
         user,
         loading,
         isAuthenticated,
         login,
+        loginWithGoogle,
         register,
         logout,
         updateUser,
+        refreshUser,
         checkAuth,
     };
 

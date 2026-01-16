@@ -39,12 +39,30 @@ class OnboardingData(BaseModel):
     concerns: Optional[List[str]] = []
 
 
+class SubscriptionStatus(str, Enum):
+    NONE = "none"
+    ACTIVE = "active"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
+
+
 class UserInDB(UserBase):
     id: str = Field(alias="_id")
     role: UserRole = UserRole.USER
     isVerified: bool = False
     isPremium: bool = False
     onboarding: Optional[OnboardingData] = None
+    # Google OAuth fields
+    googleId: Optional[str] = None
+    avatar: Optional[str] = None
+    # User journey state tracking
+    hasSeenFeatureHighlights: bool = False
+    hasCompletedFirstScan: bool = False
+    # Subscription fields
+    subscriptionStatus: SubscriptionStatus = SubscriptionStatus.NONE
+    stripeCustomerId: Optional[str] = None
+    subscriptionId: Optional[str] = None
+    subscriptionEndDate: Optional[datetime] = None
     createdAt: datetime
     updatedAt: datetime
 
@@ -60,6 +78,12 @@ class UserResponse(BaseModel):
     isVerified: bool
     isPremium: bool
     onboarding: Optional[OnboardingData] = None
+    googleId: Optional[str] = None
+    avatar: Optional[str] = None
+    hasSeenFeatureHighlights: bool = False
+    hasCompletedFirstScan: bool = False
+    subscriptionStatus: str = "none"
+    subscriptionEndDate: Optional[datetime] = None
     createdAt: datetime
 
 

@@ -15,6 +15,20 @@ class Settings(BaseSettings):
     # Google AI (Gemini)
     google_ai_api_key: str = ""
     
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    
+    # Stripe
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PRICE_WEEKLY: str = ""
+    STRIPE_PRICE_MONTHLY: str = ""
+    STRIPE_PRICE_YEARLY: str = ""
+    
+    # App URL for redirects
+    APP_URL: str = "lookmax://"
+    
     # CORS
     cors_origins: str = '["http://localhost:19006","http://localhost:8082","http://localhost:5173","http://localhost:3000"]'
     

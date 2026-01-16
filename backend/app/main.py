@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from .config import settings
 from .database import connect_to_mongo, close_mongo_connection
-from .routers import auth, users, scanner, content, community, admin, events
+from .routers import auth, users, scanner, content, community, admin, events, payment, progress
 
 
 @asynccontextmanager
@@ -41,6 +41,8 @@ app.include_router(content.router, prefix="/api/content", tags=["Content"])
 app.include_router(community.router, prefix="/api/community", tags=["Community"])
 app.include_router(events.router, prefix="/api/events", tags=["Events"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
+app.include_router(payment.router, prefix="/api/payment", tags=["Payment"])
+app.include_router(progress.router, prefix="/api/progress", tags=["Progress"])
 
 
 @app.get("/")

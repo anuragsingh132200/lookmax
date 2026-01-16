@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     View,
     Text,
@@ -13,16 +13,20 @@ import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { scannerService } from '../../services';
+import { scannerService, authService } from '../../services';
+import { useAuth } from '../../context';
 
 export default function ScannerScreen() {
     const router = useRouter();
+    const { user, refreshUser } = useAuth();
     const [permission, requestPermission] = useCameraPermissions();
     const [facing, setFacing] = useState('front');
     const [capturedImage, setCapturedImage] = useState(null);
     const [analyzing, setAnalyzing] = useState(false);
     const [results, setResults] = useState(null);
     const cameraRef = useRef(null);
+
+    const isPremium = user?.isPremium || user?.subscriptionStatus === 'active';
 
     const takePicture = async () => {
         if (cameraRef.current) {
@@ -59,6 +63,12 @@ export default function ScannerScreen() {
         try {
             const result = await scannerService.analyzeFace(capturedImage.base64);
             setResults(result.analysis);
+
+            // Mark first scan as completed
+            if (!user?.hasCompletedFirstScan) {
+                await authService.updateUserState({ hasCompletedFirstScan: true });
+                refreshUser();
+            }
         } catch (error) {
             Alert.alert('Error', 'Failed to analyze face. Please try again.');
             console.log('Analysis error:', error);
@@ -70,6 +80,10 @@ export default function ScannerScreen() {
     const resetScan = () => {
         setCapturedImage(null);
         setResults(null);
+    };
+
+    const handleUnlockResults = () => {
+        router.push('/subscription');
     };
 
     if (!permission) {
@@ -98,12 +112,12 @@ export default function ScannerScreen() {
         );
     }
 
-    // Show results
+    // Show results (with blur for non-premium users)
     if (results) {
         return (
             <ScrollView style={styles.container}>
                 <View style={styles.resultsContainer}>
-                    {/* Score Header */}
+                    {/* Score Header - Always visible */}
                     <View style={styles.scoreHeader}>
                         <View style={styles.scoreCircle}>
                             <Text style={styles.scoreNumber}>{results.overallScore || '--'}</Text>
@@ -111,93 +125,121 @@ export default function ScannerScreen() {
                         </View>
                     </View>
 
-                    {/* Key Metrics */}
-                    <View style={styles.metricsSection}>
-                        <Text style={styles.sectionTitle}>Analysis Results</Text>
-                        <View style={styles.metricCard}>
-                            <View style={styles.metricRow}>
-                                <Text style={styles.metricLabel}>Canthal Tilt</Text>
-                                <Text style={styles.metricValue}>{results.canthalTilt || 'N/A'}</Text>
+                    {/* Blur Overlay for Non-Premium Users */}
+                    {!isPremium && (
+                        <View style={styles.blurOverlay}>
+                            <View style={styles.lockIconContainer}>
+                                <Ionicons name="lock-closed" size={48} color="#ffd700" />
                             </View>
-                            <View style={styles.metricRow}>
-                                <Text style={styles.metricLabel}>Facial Symmetry</Text>
-                                <Text style={styles.metricValue}>{results.facialSymmetry || 'N/A'}</Text>
-                            </View>
-                            <View style={styles.metricRow}>
-                                <Text style={styles.metricLabel}>Jawline Definition</Text>
-                                <Text style={styles.metricValue}>{results.jawlineDefinition || 'N/A'}</Text>
-                            </View>
-                            <View style={styles.metricRow}>
-                                <Text style={styles.metricLabel}>Skin Quality</Text>
-                                <Text style={styles.metricValue}>{results.skinQuality || 'N/A'}</Text>
-                            </View>
+                            <Text style={styles.blurTitle}>Unlock Full Results</Text>
+                            <Text style={styles.blurDescription}>
+                                Subscribe to see your complete facial analysis, detailed measurements, and personalized recommendations.
+                            </Text>
+                            <TouchableOpacity style={styles.unlockButton} onPress={handleUnlockResults}>
+                                <Ionicons name="diamond" size={20} color="#fff" />
+                                <Text style={styles.unlockButtonText}>Subscribe Now</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.skipButton}
+                                onPress={() => router.replace('/(tabs)')}
+                            >
+                                <Text style={styles.skipButtonText}>Maybe Later</Text>
+                            </TouchableOpacity>
                         </View>
-                    </View>
+                    )}
 
-                    {/* Detailed Measurements */}
-                    {results.measurements?.length > 0 && (
-                        <View style={styles.metricsSection}>
-                            <Text style={styles.sectionTitle}>Detailed Measurements</Text>
-                            {results.measurements.map((measurement, index) => (
-                                <View key={index} style={styles.measurementCard}>
-                                    <View style={styles.measurementHeader}>
-                                        <Text style={styles.measurementName}>{measurement.name}</Text>
-                                        <View style={[
-                                            styles.ratingBadge,
-                                            measurement.rating === 'good' && styles.ratingGood,
-                                            measurement.rating === 'needs_improvement' && styles.ratingNeedsWork,
-                                        ]}>
-                                            <Text style={styles.ratingText}>{measurement.rating}</Text>
-                                        </View>
+                    {/* Full Results - Only for Premium Users */}
+                    {isPremium && (
+                        <>
+                            {/* Key Metrics */}
+                            <View style={styles.metricsSection}>
+                                <Text style={styles.sectionTitle}>Analysis Results</Text>
+                                <View style={styles.metricCard}>
+                                    <View style={styles.metricRow}>
+                                        <Text style={styles.metricLabel}>Canthal Tilt</Text>
+                                        <Text style={styles.metricValue}>{results.canthalTilt || 'N/A'}</Text>
                                     </View>
-                                    <Text style={styles.measurementValue}>{measurement.value}</Text>
-                                    {measurement.description && (
-                                        <Text style={styles.measurementDesc}>{measurement.description}</Text>
-                                    )}
+                                    <View style={styles.metricRow}>
+                                        <Text style={styles.metricLabel}>Facial Symmetry</Text>
+                                        <Text style={styles.metricValue}>{results.facialSymmetry || 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.metricRow}>
+                                        <Text style={styles.metricLabel}>Jawline Definition</Text>
+                                        <Text style={styles.metricValue}>{results.jawlineDefinition || 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.metricRow}>
+                                        <Text style={styles.metricLabel}>Skin Quality</Text>
+                                        <Text style={styles.metricValue}>{results.skinQuality || 'N/A'}</Text>
+                                    </View>
                                 </View>
-                            ))}
-                        </View>
-                    )}
+                            </View>
 
-                    {/* Recommendations */}
-                    {results.recommendations?.length > 0 && (
-                        <View style={styles.metricsSection}>
-                            <Text style={styles.sectionTitle}>Recommendations</Text>
-                            {results.recommendations.map((rec, index) => (
-                                <View key={index} style={styles.recommendationItem}>
-                                    <Ionicons name="checkmark-circle" size={20} color="#6c5ce7" />
-                                    <Text style={styles.recommendationText}>{rec}</Text>
+                            {/* Detailed Measurements */}
+                            {results.measurements?.length > 0 && (
+                                <View style={styles.metricsSection}>
+                                    <Text style={styles.sectionTitle}>Detailed Measurements</Text>
+                                    {results.measurements.map((measurement, index) => (
+                                        <View key={index} style={styles.measurementCard}>
+                                            <View style={styles.measurementHeader}>
+                                                <Text style={styles.measurementName}>{measurement.name}</Text>
+                                                <View style={[
+                                                    styles.ratingBadge,
+                                                    measurement.rating === 'good' && styles.ratingGood,
+                                                    measurement.rating === 'needs_improvement' && styles.ratingNeedsWork,
+                                                ]}>
+                                                    <Text style={styles.ratingText}>{measurement.rating}</Text>
+                                                </View>
+                                            </View>
+                                            <Text style={styles.measurementValue}>{measurement.value}</Text>
+                                            {measurement.description && (
+                                                <Text style={styles.measurementDesc}>{measurement.description}</Text>
+                                            )}
+                                        </View>
+                                    ))}
                                 </View>
-                            ))}
-                        </View>
-                    )}
+                            )}
 
-                    {/* Protocols */}
-                    {results.protocols?.length > 0 && (
-                        <View style={styles.metricsSection}>
-                            <Text style={styles.sectionTitle}>Your Protocols</Text>
-                            {results.protocols.map((protocol, index) => (
-                                <View key={index} style={styles.protocolItem}>
-                                    <Text style={styles.protocolNumber}>{index + 1}</Text>
-                                    <Text style={styles.protocolText}>{protocol}</Text>
+                            {/* Recommendations */}
+                            {results.recommendations?.length > 0 && (
+                                <View style={styles.metricsSection}>
+                                    <Text style={styles.sectionTitle}>Recommendations</Text>
+                                    {results.recommendations.map((rec, index) => (
+                                        <View key={index} style={styles.recommendationItem}>
+                                            <Ionicons name="checkmark-circle" size={20} color="#6c5ce7" />
+                                            <Text style={styles.recommendationText}>{rec}</Text>
+                                        </View>
+                                    ))}
                                 </View>
-                            ))}
-                        </View>
-                    )}
+                            )}
 
-                    {/* Actions */}
-                    <View style={styles.resultActions}>
-                        <TouchableOpacity style={styles.newScanButton} onPress={resetScan}>
-                            <Ionicons name="camera" size={20} color="#fff" />
-                            <Text style={styles.newScanButtonText}>New Scan</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.homeButton}
-                            onPress={() => router.replace('/(tabs)')}
-                        >
-                            <Text style={styles.homeButtonText}>Go to Home</Text>
-                        </TouchableOpacity>
-                    </View>
+                            {/* Protocols */}
+                            {results.protocols?.length > 0 && (
+                                <View style={styles.metricsSection}>
+                                    <Text style={styles.sectionTitle}>Your Protocols</Text>
+                                    {results.protocols.map((protocol, index) => (
+                                        <View key={index} style={styles.protocolItem}>
+                                            <Text style={styles.protocolNumber}>{index + 1}</Text>
+                                            <Text style={styles.protocolText}>{protocol}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* Actions */}
+                            <View style={styles.resultActions}>
+                                <TouchableOpacity style={styles.newScanButton} onPress={resetScan}>
+                                    <Ionicons name="camera" size={20} color="#fff" />
+                                    <Text style={styles.newScanButtonText}>New Scan</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.homeButton}
+                                    onPress={() => router.replace('/(tabs)')}
+                                >
+                                    <Text style={styles.homeButtonText}>Go to Home</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </>
+                    )}
                 </View>
             </ScrollView>
         );
@@ -240,19 +282,19 @@ export default function ScannerScreen() {
                 facing={facing}
             />
 
-            {/* Guide overlay - outside CameraView with absolute position */}
+            {/* Guide overlay */}
             <View style={styles.guideOverlay}>
                 <View style={styles.faceGuide} />
             </View>
 
-            {/* Instructions - outside CameraView with absolute position */}
+            {/* Instructions */}
             <View style={styles.instructions}>
                 <Text style={styles.instructionText}>
                     Position your face within the guide
                 </Text>
             </View>
 
-            {/* Controls - outside CameraView with absolute position */}
+            {/* Controls */}
             <View style={styles.controls}>
                 <TouchableOpacity style={styles.controlButton} onPress={pickImage}>
                     <Ionicons name="images" size={28} color="#fff" />
@@ -459,6 +501,61 @@ const styles = StyleSheet.create({
     },
     scoreLabel: {
         color: 'rgba(255,255,255,0.8)',
+        fontSize: 14,
+    },
+    // Blur overlay styles
+    blurOverlay: {
+        backgroundColor: 'rgba(26, 26, 46, 0.95)',
+        borderRadius: 20,
+        padding: 30,
+        alignItems: 'center',
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#6c5ce7',
+    },
+    lockIconContainer: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: 'rgba(255, 215, 0, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    blurTitle: {
+        color: '#fff',
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    blurDescription: {
+        color: '#888',
+        fontSize: 14,
+        textAlign: 'center',
+        lineHeight: 22,
+        marginBottom: 25,
+    },
+    unlockButton: {
+        backgroundColor: '#6c5ce7',
+        paddingVertical: 16,
+        paddingHorizontal: 40,
+        borderRadius: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 15,
+    },
+    unlockButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    skipButton: {
+        paddingVertical: 10,
+    },
+    skipButtonText: {
+        color: '#888',
         fontSize: 14,
     },
     metricsSection: {

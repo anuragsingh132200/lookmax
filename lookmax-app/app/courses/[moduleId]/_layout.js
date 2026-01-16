@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-export default function AuthLayout() {
+export default function ModuleLayout() {
     return (
         <Stack
             screenOptions={{
@@ -16,11 +16,19 @@ export default function AuthLayout() {
                 },
             }}
         >
-            <Stack.Screen name="login" options={{ headerShown: false }} />
-            <Stack.Screen name="register" options={{ headerShown: false }} />
-            <Stack.Screen name="features" options={{ headerShown: false }} />
-            <Stack.Screen name="onboarding" options={{ title: 'Get Started' }} />
+            <Stack.Screen
+                name="index"
+                options={{
+                    headerShown: true,
+                }}
+            />
+            <Stack.Screen
+                name="[chapterId]"
+                options={{
+                    headerShown: true,
+                    title: 'Chapter',
+                }}
+            />
         </Stack>
     );
 }
-

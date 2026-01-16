@@ -31,6 +31,19 @@ export const authService = {
         return response.data;
     },
 
+    // Google OAuth login
+    async loginWithGoogle(idToken) {
+        const response = await api.post('/api/auth/google', {
+            idToken,
+        });
+
+        if (response.data.access_token) {
+            await SecureStore.setItemAsync('token', response.data.access_token);
+        }
+
+        return response.data;
+    },
+
     // Get current user
     async getCurrentUser() {
         const response = await api.get('/api/auth/me');
@@ -51,6 +64,12 @@ export const authService = {
     // Save onboarding data
     async saveOnboarding(data) {
         const response = await api.put('/api/users/onboarding', data);
+        return response.data;
+    },
+
+    // Update user state (e.g., hasSeenFeatureHighlights, hasCompletedFirstScan)
+    async updateUserState(data) {
+        const response = await api.put('/api/auth/update-state', data);
         return response.data;
     },
 };

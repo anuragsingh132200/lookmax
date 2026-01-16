@@ -14,15 +14,22 @@ function RootLayoutNav() {
         if (loading) return;
 
         const inAuthGroup = segments[0] === '(auth)';
+        const inTabsGroup = segments[0] === '(tabs)';
 
         if (!isAuthenticated && !inAuthGroup) {
             // User is not signed in and not on auth screen - redirect to login
             router.replace('/(auth)/login');
         } else if (isAuthenticated && inAuthGroup) {
-            // User is signed in but on auth screen - redirect to home
-            if (user && !user.onboarding) {
+            // User is signed in but on auth screen - handle new user flow
+
+            // Check if user has seen feature highlights (new user flow)
+            if (!user?.hasSeenFeatureHighlights && !user?.onboarding) {
+                router.replace('/(auth)/features');
+            } else if (!user?.onboarding) {
+                // User hasn't completed onboarding
                 router.replace('/(auth)/onboarding');
             } else {
+                // Fully onboarded user - go to home
                 router.replace('/(tabs)');
             }
         }
@@ -60,6 +67,19 @@ function RootLayoutNav() {
                     headerShown: true,
                     title: 'Premium',
                     presentation: 'modal',
+                }}
+            />
+            <Stack.Screen
+                name="subscription"
+                options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                }}
+            />
+            <Stack.Screen
+                name="courses"
+                options={{
+                    headerShown: false,
                 }}
             />
         </Stack>

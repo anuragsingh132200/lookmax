@@ -18,7 +18,10 @@ export default function HomeScreen() {
     const [stats, setStats] = useState(null);
     const [glowUpPlan, setGlowUpPlan] = useState(null);
     const [events, setEvents] = useState([]);
+    const [progress, setProgress] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
+
+    const isPremium = user?.isPremium || user?.subscriptionStatus === 'active';
 
     useEffect(() => {
         loadData();
@@ -26,14 +29,25 @@ export default function HomeScreen() {
 
     const loadData = async () => {
         try {
-            const [statsRes, planRes, eventsRes] = await Promise.all([
+            const requests = [
                 api.get('/api/users/stats'),
                 api.get('/api/content/glow-up-plan'),
                 api.get('/api/events'),
-            ]);
-            setStats(statsRes.data);
-            setGlowUpPlan(planRes.data);
-            setEvents(eventsRes.data.slice(0, 3));
+            ];
+
+            // Only fetch progress if user is premium
+            if (isPremium) {
+                requests.push(api.get('/api/progress/user'));
+            }
+
+            const responses = await Promise.all(requests);
+            setStats(responses[0].data);
+            setGlowUpPlan(responses[1].data);
+            setEvents(responses[2].data.slice(0, 3));
+
+            if (isPremium && responses[3]) {
+                setProgress(responses[3].data);
+            }
         } catch (error) {
             console.log('Error loading home data:', error);
         }
@@ -79,6 +93,38 @@ export default function HomeScreen() {
                 </View>
             </View>
 
+            {/* Course Progress - Premium Users */}
+            {isPremium && progress && (
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Your Glow-Up Journey</Text>
+                        <TouchableOpacity onPress={() => router.push('/courses')}>
+                            <Text style={styles.sectionLink}>View All</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity
+                        style={styles.progressCard}
+                        onPress={() => router.push('/courses')}
+                    >
+                        <View style={styles.progressHeader}>
+                            <Ionicons name="trophy" size={24} color="#ffd700" />
+                            <Text style={styles.progressTitle}>Course Progress</Text>
+                        </View>
+                        <View style={styles.progressBar}>
+                            <View
+                                style={[
+                                    styles.progressFill,
+                                    { width: `${progress.overallPercentage || 0}%` }
+                                ]}
+                            />
+                        </View>
+                        <Text style={styles.progressText}>
+                            {progress.totalCompleted || 0} of {progress.totalChapters || 0} completed
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
             {/* Quick Actions */}
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -103,7 +149,7 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.quickAction}
-                        onPress={() => router.push('/paywall')}
+                        onPress={() => isPremium ? router.push('/courses') : router.push('/subscription')}
                     >
                         <View style={styles.quickActionIcon}>
                             <Ionicons name="book" size={28} color="#6c5ce7" />
@@ -159,11 +205,11 @@ export default function HomeScreen() {
                 </View>
             )}
 
-            {/* Premium Banner */}
-            {!user?.isPremium && (
+            {/* Premium Banner - Non Premium Users */}
+            {!isPremium && (
                 <TouchableOpacity
                     style={styles.premiumBanner}
-                    onPress={() => router.push('/paywall')}
+                    onPress={() => router.push('/subscription')}
                 >
                     <View style={styles.premiumContent}>
                         <Ionicons name="diamond" size={32} color="#ffd700" />
@@ -236,11 +282,52 @@ const styles = StyleSheet.create({
     section: {
         padding: 20,
     },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
     sectionTitle: {
         fontSize: 18,
         fontWeight: 'bold',
         color: '#fff',
         marginBottom: 15,
+    },
+    sectionLink: {
+        color: '#6c5ce7',
+        fontSize: 14,
+    },
+    progressCard: {
+        backgroundColor: '#1a1a2e',
+        borderRadius: 16,
+        padding: 20,
+    },
+    progressHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 15,
+    },
+    progressTitle: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    progressBar: {
+        height: 8,
+        backgroundColor: '#2d2d44',
+        borderRadius: 4,
+        marginBottom: 10,
+    },
+    progressFill: {
+        height: '100%',
+        backgroundColor: '#6c5ce7',
+        borderRadius: 4,
+    },
+    progressText: {
+        color: '#888',
+        fontSize: 14,
     },
     quickActions: {
         flexDirection: 'row',
@@ -325,7 +412,6 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     premiumBanner: {
-        backgroundColor: 'linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%)',
         backgroundColor: '#6c5ce7',
         borderRadius: 16,
         padding: 20,

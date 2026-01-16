@@ -79,7 +79,7 @@ async def analyze_face(image_base64: str) -> Dict[str, Any]:
     """
     try:
         # Initialize the model
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         # Prepare the image
         # Remove data URL prefix if present

@@ -8,18 +8,57 @@ import {
     KeyboardAvoidingView,
     Platform,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import { useAuth } from '../../context';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
     const router = useRouter();
-    const { login } = useAuth();
+    const { login, loginWithGoogle } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
+
+    // Google OAuth configuration
+    const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+        clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '',
+        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '',
+        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '',
+    });
+
+    React.useEffect(() => {
+        handleGoogleResponse();
+    }, [response]);
+
+    const handleGoogleResponse = async () => {
+        if (response?.type === 'success') {
+            setGoogleLoading(true);
+            try {
+                const { id_token } = response.params;
+                const result = await loginWithGoogle(id_token);
+
+                // Check if new user needs onboarding
+                if (result.is_new_user) {
+                    router.replace('/(auth)/features');
+                } else {
+                    router.replace('/(tabs)');
+                }
+            } catch (error) {
+                Alert.alert('Error', 'Google sign-in failed. Please try again.');
+                console.log('Google auth error:', error);
+            } finally {
+                setGoogleLoading(false);
+            }
+        }
+    };
 
     const handleLogin = async () => {
         if (!email.trim() || !password.trim()) {
@@ -38,6 +77,20 @@ export default function LoginScreen() {
         }
     };
 
+    const handleGoogleLogin = async () => {
+        if (!request) {
+            Alert.alert('Error', 'Google sign-in is not configured');
+            return;
+        }
+        setGoogleLoading(true);
+        try {
+            await promptAsync();
+        } catch (error) {
+            Alert.alert('Error', 'Failed to initiate Google sign-in');
+            setGoogleLoading(false);
+        }
+    };
+
     return (
         <KeyboardAvoidingView
             style={styles.container}
@@ -51,6 +104,29 @@ export default function LoginScreen() {
                     </View>
                     <Text style={styles.logoText}>LookMax</Text>
                     <Text style={styles.tagline}>Your Personal Glow-Up Guide</Text>
+                </View>
+
+                {/* Google Sign-In Button */}
+                <TouchableOpacity
+                    style={styles.googleButton}
+                    onPress={handleGoogleLogin}
+                    disabled={googleLoading || !request}
+                >
+                    {googleLoading ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <>
+                            <Ionicons name="logo-google" size={20} color="#fff" />
+                            <Text style={styles.googleButtonText}>Continue with Google</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
+
+                {/* Divider */}
+                <View style={styles.divider}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>or</Text>
+                    <View style={styles.dividerLine} />
                 </View>
 
                 {/* Form Section */}
@@ -126,7 +202,7 @@ const styles = StyleSheet.create({
     },
     logoSection: {
         alignItems: 'center',
-        marginBottom: 50,
+        marginBottom: 40,
     },
     logoIcon: {
         width: 100,
@@ -146,6 +222,36 @@ const styles = StyleSheet.create({
         color: '#888',
         fontSize: 16,
         marginTop: 8,
+    },
+    googleButton: {
+        backgroundColor: '#ea4335',
+        borderRadius: 12,
+        paddingVertical: 16,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 20,
+    },
+    googleButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    divider: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#2d2d44',
+    },
+    dividerText: {
+        color: '#666',
+        paddingHorizontal: 15,
+        fontSize: 14,
     },
     form: {
         marginBottom: 30,
