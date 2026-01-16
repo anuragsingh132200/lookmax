@@ -6,6 +6,7 @@ import {
     ScrollView,
     TouchableOpacity,
     Alert,
+    Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,7 +16,15 @@ import { useUserStore } from '../../stores/userStore';
 export default function ProfileScreen() {
     const { user, logout, isSubscribed } = useUserStore();
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        if (Platform.OS === 'web') {
+            if (window.confirm('Are you sure you want to logout?')) {
+                await logout();
+                router.replace('/(auth)/login');
+            }
+            return;
+        }
+
         Alert.alert(
             'Logout',
             'Are you sure you want to logout?',

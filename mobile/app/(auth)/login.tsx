@@ -116,6 +116,16 @@ export default function LoginScreen() {
                             </LinearGradient>
                         </TouchableOpacity>
 
+                        <View style={styles.dividerContainer}>
+                            <View style={styles.dividerLine} />
+                            <Text style={styles.dividerText}>OR</Text>
+                            <View style={styles.dividerLine} />
+                        </View>
+
+                        <TouchableOpacity style={styles.googleButton} onPress={() => Alert.alert('Coming Soon', 'Google Sign-In will be available soon!')}>
+                            <Text style={styles.googleButtonText}>Continue with Google</Text>
+                        </TouchableOpacity>
+
                         <View style={styles.footer}>
                             <Text style={styles.footerText}>Don't have an account? </Text>
                             <Link href="/(auth)/signup" asChild>
@@ -220,5 +230,34 @@ const styles = StyleSheet.create({
         color: Colors.primary,
         fontSize: FontSizes.md,
         fontWeight: '600',
+    },
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: Spacing.lg,
+    },
+    dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: Colors.border,
+    },
+    dividerText: {
+        marginHorizontal: Spacing.md,
+        color: Colors.textSecondary,
+        fontSize: FontSizes.sm,
+    },
+    googleButton: {
+        backgroundColor: Colors.background,
+        padding: Spacing.md,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        alignItems: 'center',
+        marginBottom: Spacing.md,
+    },
+    googleButtonText: {
+        fontSize: FontSizes.lg,
+        fontWeight: '600',
+        color: Colors.text,
     },
 });

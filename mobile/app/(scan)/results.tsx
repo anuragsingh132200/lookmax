@@ -38,7 +38,7 @@ export default function ResultsScreen() {
     };
 
     const handleUnlock = () => {
-        router.push('/(scan)/subscribe');
+        router.push('/payment/checkout');
     };
 
     const handleContinue = () => {
